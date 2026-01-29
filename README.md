@@ -1,61 +1,125 @@
 # Polymarket Copy Trading Bot
 
-## Introduction
-This project is a Polymarket Copy Trading Bot that allows users to automatically copy trades from a selected trader on Polymarket.
+Automated copy-trading for [Polymarket](https://polymarket.com). Monitor a chosen trader and mirror their prediction market orders in real time.
+
+## Table of Contents
+
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [Geographic Restrictions](#geographic-restrictions)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
 
 ## Features
-- **Automated Trading**: Automatically copy trades from a selected trader.
-- **Real-time Monitoring**: Continuously monitor the selected trader's activity.
-- **Customizable Settings**: Configure trading parameters and risk management.
+
+- **Automated copy trading** — Mirror orders from a selected Polymarket trader as they place them.
+- **Real-time monitoring** — Poll the CLOB for the target wallet’s activity at a configurable interval.
+- **Configurable behavior** — Set fetch interval, order age cutoff, and retry limits via environment variables.
+- **MongoDB-backed history** — Track copied trades for your own records.
+
+## Prerequisites
+
+- **Node.js** 18+ and npm
+- **MongoDB** — Local instance or [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+- **Polygon RPC** — e.g. [Infura](https://infura.io), [Alchemy](https://www.alchemy.com), or another provider
+- **Wallets** — The Polymarket wallet you want to copy from, and the wallet that will execute copies (with USDC on Polygon)
 
 ## Installation
-1. Install latest version of Node.js and npm
-2. Navigate to the project directory:
-    ```bash
-    cd polymarket_copy_trading_bot
-    ```
-3. Create `.env` file:
-    ```bash
-    touch .env
-    ```
-4. Configure env variables:
-    ```typescript
-    USER_ADDRESS = 'Selected account wallet address to copy'
 
-    PROXY_WALLET = 'Your Polymarket account address'
-    PRIVATE_KEY = 'My wallet private key'
+1. Clone the repository and go to the project directory:
 
-    CLOB_HTTP_URL = 'https://clob.polymarket.com/'
-    CLOB_WS_URL = 'wss://ws-subscriptions-clob.polymarket.com/ws'
+   ```bash
+   git clone https://github.com/OnChainMee/polymarket-copy-trading-bot.git
+   cd polymarket-copy-trading-bot
 
-    FETCH_INTERVAL = 1      // default is 1 second
-    TOO_OLD_TIMESTAMP = 1   // default is 1 hour
-    RETRY_LIMIT = 3         // default is 3 times
+   ```
 
-    MONGO_URI = 'mongodb+srv://polymarket_copytrading_bot:V5ufvi9ra1dsOA9M@cluster0.j1flc.mongodb.net/polymarket_copytrading'
+2. Install dependencies:
 
-    RPC_URL = 'https://polygon-mainnet.infura.io/v3/90ee27dc8b934739ba9a55a075229744'
+   ```bash
+   npm install
+   ```
 
-    USDC_CONTRACT_ADDRESS = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'
-    ```
-3. Install the required dependencies:
-    ```bash
-    npm install
-    ```
-5. Build the project:
-    ```bash
-    npm run build
-    ```
-6. Run BOT:
-    ```bash
-    npm run start
-    ```
-7. ⚠ Choose reasonable location for the bot(Many users faced this problem, read this carefully before setting up the bot):
+3. Create a `.env` file in the project root (see [Configuration](#configuration)).
 
-   For users facing IP address-related access issues with Polymarket due to geographic restrictions, I recommend using [tradingvps.io](https://app.tradingvps.io/link.php?id=11) with the Netherlands location(Basic plan). This VPS service offers ultra-low latency and is physically close to Polymarket’s servers, ensuring faster response times and a smoother trading experience. It is specifically optimized for traders and easy to set up, making it an excellent choice for both beginners and experienced users looking to avoid IP-based blocks.
- 
+4. Build and run:
+
+   ```bash
+   npm run build
+   npm start
+   ```
+
+For development with hot reload:
+
+```bash
+npm run dev
+```
+
+## Configuration
+
+Create a `.env` file in the project root with the following variables. Do **not** commit `.env` or share keys.
+
+| Variable | Required | Description | Example / default |
+|----------|----------|-------------|-------------------|
+| `USER_ADDRESS` | Yes | Polymarket wallet address to copy | `0x...` |
+| `PROXY_WALLET` | Yes | Your Polymarket wallet (executes copies) | `0x...` |
+| `PRIVATE_KEY` | Yes | Private key for `PROXY_WALLET` (no `0x` prefix) | — |
+| `CLOB_HTTP_URL` | Yes | Polymarket CLOB API base URL | `https://clob.polymarket.com/` |
+| `CLOB_WS_URL` | Yes | Polymarket CLOB WebSocket URL | `wss://ws-subscriptions-clob.polymarket.com/ws` |
+| `MONGO_URI` | Yes | MongoDB connection string | `mongodb+srv://user:pass@cluster.mongodb.net/dbname` |
+| `RPC_URL` | Yes | Polygon mainnet RPC URL | `https://polygon-mainnet.g.alchemy.com/v2/YOUR_KEY` |
+| `USDC_CONTRACT_ADDRESS` | Yes | USDC on Polygon | `0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174` |
+| `FETCH_INTERVAL` | No | Poll interval in seconds | `1` |
+| `TOO_OLD_TIMESTAMP` | No | Ignore orders older than this (hours) | `24` |
+| `RETRY_LIMIT` | No | Max retries per operation | `3` |
+
+Example `.env` (replace placeholders; never commit real keys):
+
+```env
+USER_ADDRESS=0xTargetTraderAddress
+PROXY_WALLET=0xYourPolymarketWallet
+PRIVATE_KEY=your_private_key_no_0x_prefix
+
+CLOB_HTTP_URL=https://clob.polymarket.com/
+CLOB_WS_URL=wss://ws-subscriptions-clob.polymarket.com/ws
+
+MONGO_URI=mongodb+srv://user:password@cluster.mongodb.net/your_db
+RPC_URL=https://polygon-mainnet.g.alchemy.com/v2/YOUR_ALCHEMY_KEY
+USDC_CONTRACT_ADDRESS=0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174
+
+FETCH_INTERVAL=1
+TOO_OLD_TIMESTAMP=24
+RETRY_LIMIT=3
+```
+
+## Usage
+
+- **Production:** `npm run build` then `npm start`
+- **Development:** `npm run dev` (runs with `ts-node`)
+
+On startup the bot will connect to MongoDB, then start monitoring `USER_ADDRESS` and executing copies on `PROXY_WALLET`. Ensure the proxy wallet has USDC on Polygon for placing orders.
+
+## Geographic Restrictions
+
+Polymarket may restrict access from some regions. If you run into IP-based blocks:
+
+- Run the bot from a supported region (e.g. VPS in the Netherlands or another allowed location).
+- Use a low-latency provider close to Polymarket’s infrastructure if you care about execution speed.
+
+This project does not endorse any specific VPS provider. Choose a host that meets your legal and performance needs.
+
 ## Contributing
-Contributions are welcome! Please open an issue or submit a pull request. And if you are interested in this project, please consider giving it a star✨.
+
+Contributions are welcome. Please open an issue to discuss larger changes, then submit a pull request. If you find the project useful, consider giving it a star.
+
+## License
+
+ISC — see [package.json](package.json) for details.
 
 ## Contact
-For updated version or any questions, please contact me at [Telegram](https://t.me/OnChainMee).
+
+For questions or updates: [Telegram](https://t.me/OnChainMee).
